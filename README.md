@@ -22,5 +22,8 @@ Hey look I'm doing a thing! It's in R.
       <td>2012-07-08</td>
       <td>0.12403</td>
     </tr>
+    <tr>
+      <td>2012-07-08</td>
+      <td>0.11254</td>
   </tbody>
 </table>
