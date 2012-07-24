@@ -71,7 +71,7 @@ def getFeatures(rows, words, h, w, extras=[]):
   extras  -- Columns to copy from infile to outfile
   '''
   set_features = []
-  outheader = ['Id'] + extras + ['Color', 'Length', 'Tokens'] + words
+  outheader = ['Id'] + extras + ['Color', 'Length', 'Tokens', 'PunctCt'] + words
   oh = dict(zip(outheader, range(len(outheader))))
   discards = set()
   unavail_extras = set()
@@ -109,9 +109,13 @@ def getFeatures(rows, words, h, w, extras=[]):
 
     features[oh['Tokens']] = len(my_tokens)
 
+    features[oh['PunctCt']] = 0
+    for char in list(row[h['EssayText']]):
+      if char in set(string.punctuation): features[oh['PunctCt']] += 1
+
     # Add words
     for token in my_tokens:
-      try: features[oh[token]] += 1
+      try: features[oh[token]] = 1
       except KeyError: discards.add(token)
 
     # Cast all to strings
