@@ -1,41 +1,46 @@
-library('gbm')
 library('randomForest')
-library('e1071')
-
-print('Loading datasets...')
-train <- read.csv('data/train_features.csv', header=TRUE)
-test  <- read.csv('data/public_leaderboard_features.tsv', header=TRUE)
-
-print('Preprocessing...')
-
-sas.formula = as.formula(paste('Score1 ~',
-                               paste(names(train)[c(4:ncol(train))], collapse=" + ")))
+source('metrics.r')
 
 validation = data.frame()
 submission = data.frame()
 for (i in 1:10) {
   print(paste('Training and predicting on essay set ', i))
-  my_train <- train[which(train$EssaySet == i),]
-  my_test <- test[which(test$EssaySet == i),]
-  my_train$Color <- as.factor(my_train$Color)
-  my_train$Score1 <- as.factor(my_train$Score1)
-  my_test$Color  <- as.factor(my_test$Color)
+  print('Loading datasets...')
+  train <- read.csv(paste(paste('data/features/train_', i,
+                                sep=''), '.csv', sep=''), header=TRUE)
+  test <- read.csv(paste(paste('data/features/test_', i,
+                               sep=''), '.csv', sep=''), header=TRUE)
+
+  print('Preprocessing...')
+  train$Color <- as.factor(train$Color)
+  train$Score1 <- as.factor(train$Score1)
+  test$Color  <- as.factor(test$Color)
 
   # Split out a CV
-  n <- nrow(my_train)
+  n <- nrow(train)
   indices <- sort(sample(1:n, round(0.8 * n)))
-  construct <- my_train[indices,]
-  my_cv <- my_train[-indices,]
+  construct <- train[indices,]
+  cv        <- train[-indices,]
 
-  print(unique(construct$Score1))
-  model <- randomForest(construct[,5:ncol(construct)], construct$Score1,
+  model <- randomForest(construct[,4:ncol(construct)], construct$Score1,
                         sampsize = nrow(construct)*.75, ntree=500, do.trace=TRUE)
   print('Predict CV')
-  my_cv$Pred <- predict(model, newdata=my_cv)
-  validation <- rbind(validation, my_cv)
+  cv.pred <- predict(model, newdata=cv)
+  print('Adding to validation')
+  validation <- rbind(validation,
+                      data.frame(Id = cv$Id, Score1 = cv$Score1, Pred = cv.pred))
+
   print('Predict Test')
-  my_test$Pred <- predict(model, newdata=my_test)
-  submission <- rbind(submission, my_test)
+  test.pred <- predict(model, newdata=test)
+  print('Adding to submission')
+  submission <- rbind(submission,
+  data.frame(id = test$Id, essay_score = test.pred))
 }
-final.submission <- data.frame(id = submission$Id, essay_score = as.numeric(submission$Pred))
+
+print(paste('RMSE: ',
+            rmse(as.numeric(validation$Score1), as.numeric(validation$Pred))))
+print(paste('QWK: ',
+            ScoreQuadraticWeightedKappa(validation$Score1, validation$Pred, 0, 3)))
+
+final.submission <- data.frame(id = submission$id, essay_score = as.numeric(levels(submission$essay_score)[submission$essay_score]))
 write.csv(final.submission, 'submission.csv', row.names=FALSE)
