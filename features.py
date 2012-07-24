@@ -93,9 +93,10 @@ def getFeatures(rows, words, h, w, extras=[]):
     if row[h['EssaySet']] == '10':
       color = row[h['EssayText']].split('::')[0].strip().lower()
       essay_text = row[h['EssayText']].split('::')[1].strip()
-      if len(color) > 0 and color[0] == '"': color = color[1:]
+      if len(color) <= 0: color = -1
+      elif len(color) > 0 and color[0] == '"': color = color[1:]
     else:
-      color = '-1'
+      color = -1
       essay_text = row[h['EssayText']]
 
     # Add the color as a feature

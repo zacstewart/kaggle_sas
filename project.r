@@ -29,7 +29,7 @@ for (i in 1:10) {
 
   print(unique(construct$Score1))
   model <- randomForest(construct[,5:ncol(construct)], construct$Score1,
-                        sampsize = nrow(construct)*.5, ntree=5, do.trace=TRUE)
+                        sampsize = nrow(construct)*.75, ntree=500, do.trace=TRUE)
   print('Predict CV')
   my_cv$Pred <- predict(model, newdata=my_cv)
   validation <- rbind(validation, my_cv)
@@ -37,5 +37,5 @@ for (i in 1:10) {
   my_test$Pred <- predict(model, newdata=my_test)
   submission <- rbind(submission, my_test)
 }
-submission <- data.frame(essay_id = submission$Id, predicted_score = submission$Pred)
-write.csv(submission, 'submission.csv', row.names=FALSE)
+final.submission <- data.frame(id = submission$Id, essay_score = as.numeric(submission$Pred))
+write.csv(final.submission, 'submission.csv', row.names=FALSE)
