@@ -4,29 +4,12 @@ import string
 import sys
 import operator
 
-pwidgets = [Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
-
-def getEssays(rows, h):
-  '''Gets essays from rows'''
-  print 'Gettings essays from %(rows)i rows...' % {'rows': len(rows)}
-  essays = []
-  pbar = ProgressBar(widgets=pwidgets, maxval=len(rows))
-  pbar.start()
-  for (i, row) in enumerate(rows):
-    pbar.update(i)
-    if row[h['EssaySet']] == '10':
-      essay = row[h['EssayText']].split('::')[1].strip()
-    else:
-      essay = row[h['EssayText']]
-    essays.append(essay)
-  pbar.finish()
-  return essays
-
-stripper  =  string.punctuation + string.whitespace
-stemmer   =  PorterStemmer()
-stopset   =  set(corpus.stopwords.words('english'))
-stopset   |= set(stripper)
-stopset   |= set('')
+pwidgets =  [Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
+stripper =  string.punctuation + string.whitespace
+stemmer  =  PorterStemmer()
+stopset  =  set(corpus.stopwords.words('english'))
+stopset  |= set(stripper)
+stopset  |= set('')
 def getTokens(text):
   tokens = word_tokenize(text)
   tokens = [token.strip(stripper).lower() for token in tokens]
@@ -161,8 +144,8 @@ if __name__ == "__main__":
       my_testrows = [row for row in testrows if row[htest['EssaySet']] == str(i)]
 
       # Get corpus for (train+test) essays from set i
-      essays += getEssays(my_trainrows, htrain)
-      essays += getEssays(my_testrows, htest)
+      essays += essayVec(my_trainrows, htrain)
+      essays += essayVec(my_testrows, htest)
       w, my_corpus = getCorpus(essays)
 
       trainoh, trainfeatures, traindiscards = getFeatures(my_trainrows, my_corpus, htrain, w, extras)
