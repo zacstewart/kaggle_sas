@@ -1,0 +1,46 @@
+ntree 5
+1,000 word corpus
+[1] "RMSE:  0.753402373505445"
+[1] "QWK:  0.641477614984771"
+
+500 word corpus
+[1] "RMSE:  0.746754000396152"
+[1] "QWK:  0.644480831094644"
+
+100 word corpus
+[1] "RMSE:  0.719342615704066"
+[1] "QWK:  0.668747083932613"
+
+100 word corpus with colors
+[1] "RMSE:  0.726847591680155"
+[1] "QWK:  0.66492280808858"
+
+ntree 500
+200 word corpus with colors
+[1] "RMSE:  0.641298916560245"
+[1] "QWK:  0.735033589968104"
+
+ntree 500
+200 word corpus with colors
+punct count
+[1] "RMSE:  0.638088962606818"
+[1] "QWK:  0.737854859424659"
+
+ntree 500
+200 word binary corpus
+punct count
+colors
+[1] "RMSE:  0.63785906205437"
+[1] "QWK:  0.739970876061468"
+
+rounded GBM using ntree 500
+[1] "RMSE:  0.732475920350039"
+[1] "QWK:  0.52057799812093"
+
+Radial SVM scale 0
+[1] "RMSE:  0.983584837068048"
+[1] "QWK:  0.23406426424068"
+
+Linear SVM scale 0
+[1] "RMSE:  1.05787357904442"
+[1] "QWK:  0.161043772497791"
