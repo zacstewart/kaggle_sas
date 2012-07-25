@@ -15,6 +15,8 @@ def parseLine(line, h):
   row[h['Id']] = int(row[h['Id']])
   try: row[h['Score1']] = int(row[h['Score1']])
   except: 'Ignoring Score1'
+  try: row[h['Score2']] = int(row[h['Score1']])
+  except: 'Ignoring Score2'
   row[h['EssaySet']] = int(row[h['EssaySet']])
   return row
 
@@ -25,6 +27,15 @@ def readFile(filename, delimiter="\t"):
   headermap = dict(zip(header, range(len(header))))
   rows = [parseLine(line, headermap) for line in f]
   return (header, headermap, rows)
+
+def writeFile(header, rows, filename):
+  h = dict(zip(header, range(len(header))))
+  f = open(filename, 'wb')
+  f.write(','.join(header) + '\n')
+  for row in rows:
+    row = [str(int(v)) for v in row]
+    f.write(','.join(row) + '\n')
+  f.close()
 
 ######################
 # Specific stuff
@@ -70,7 +81,7 @@ def cvSplit(rows, cvfrac):
   cv = []
   train = []
   for row in rows:
-    if random() >= cvfrac:
+    if random() <= cvfrac:
       cv.append(row)
     else:
       train.append(row)

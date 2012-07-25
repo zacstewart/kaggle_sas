@@ -101,8 +101,7 @@ def getFeatures(rows, words, h, w, extras=[]):
       try: features[oh[token]] = 1
       except KeyError: discards.add(token)
 
-    # Cast all to strings
-    features = [str(f) for f in features]
+    features = [f for f in features]
 
     #Throw out all the guys who didn't give me a color >:[
     if not row[h['EssaySet']] == '10' or not color is None:

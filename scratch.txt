@@ -44,3 +44,39 @@ Radial SVM scale 0
 Linear SVM scale 0
 [1] "RMSE:  1.05787357904442"
 [1] "QWK:  0.161043772497791"
+
+200 words
+  == Model: rf
+  - Fold 1...
+  -- CV score: 0.573652694611
+  -- QWK: 0.710516178737
+  - Fold 2...
+  -- CV score: 0.589008363202
+  -- QWK: 0.735571871971
+  - Mean CV score for rf: 0.581331
+  == Model: svc
+  - Fold 1...
+  -- CV score: 0.468263473054
+  -- QWK: 0.554942199938
+  - Fold 2...
+  -- CV score: 0.482676224612
+  -- QWK: 0.584473494869
+  - Mean CV score for svc: 0.475470
+
+500 words
+  == Model: rf
+  - Fold 1...
+  -- CV score: 0.565164433618
+  -- QWK: 0.710194351848
+  - Fold 2...
+  -- CV score: 0.566392479436
+  -- QWK: 0.684824335488
+  - Mean CV score for rf: 0.565778
+  == Model: svc
+  - Fold 1...
+  -- CV score: 0.476248477467
+  -- QWK: 0.563955520895
+  - Fold 2...
+  -- CV score: 0.47473560517
+  -- QWK: 0.56887925668
+  - Mean CV score for svc: 0.475492
