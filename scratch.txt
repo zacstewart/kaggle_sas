@@ -1,82 +1,117 @@
-ntree 5
-1,000 word corpus
-[1] "RMSE:  0.753402373505445"
-[1] "QWK:  0.641477614984771"
 
-500 word corpus
-[1] "RMSE:  0.746754000396152"
-[1] "QWK:  0.644480831094644"
-
-100 word corpus
-[1] "RMSE:  0.719342615704066"
-[1] "QWK:  0.668747083932613"
-
-100 word corpus with colors
-[1] "RMSE:  0.726847591680155"
-[1] "QWK:  0.66492280808858"
-
-ntree 500
-200 word corpus with colors
-[1] "RMSE:  0.641298916560245"
-[1] "QWK:  0.735033589968104"
-
-ntree 500
-200 word corpus with colors
-punct count
-[1] "RMSE:  0.638088962606818"
-[1] "QWK:  0.737854859424659"
-
-ntree 500
-200 word binary corpus
-punct count
-colors
-[1] "RMSE:  0.63785906205437"
-[1] "QWK:  0.739970876061468"
-
-rounded GBM using ntree 500
-[1] "RMSE:  0.732475920350039"
-[1] "QWK:  0.52057799812093"
-
-Radial SVM scale 0
-[1] "RMSE:  0.983584837068048"
-[1] "QWK:  0.23406426424068"
-
-Linear SVM scale 0
-[1] "RMSE:  1.05787357904442"
-[1] "QWK:  0.161043772497791"
-
-200 words
-  == Model: rf
-  - Fold 1...
-  -- CV score: 0.573652694611
-  -- QWK: 0.710516178737
-  - Fold 2...
-  -- CV score: 0.589008363202
-  -- QWK: 0.735571871971
-  - Mean CV score for rf: 0.581331
+    Modeling essay set  1
+    =====================
+    
+Building corpus...
+Essay 2229/2229 100% [==========================================================================================] Time: 0:00:02
+Generating features for train and leadboard sets...
+Row 1672/1672 100% [============================================================================================] Time: 0:00:02
+Row 557/557 100% [==============================================================================================] Time: 0:00:00
+Training and cross validating models...
+lda Fold 2  [===================================================================================================] Time: 0:00:00
+  - Mean score for lda: 0.530596
+  - Mean QWK for lda: 0.664050
+svc Fold 2  [===================================================================================================] Time: 0:00:01
+  - Mean score for svc: 0.472794
+  - Mean QWK for svc: 0.577272
+rf Fold 2  [====================================================================================================] Time: 0:00:14
+  - Mean score for rf: 0.585425
+  - Mean QWK for rf: 0.724536
+Building super training set...
+  == Model: lda
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
   == Model: svc
-  - Fold 1...
-  -- CV score: 0.468263473054
-  -- QWK: 0.554942199938
-  - Fold 2...
-  -- CV score: 0.482676224612
-  -- QWK: 0.584473494869
-  - Mean CV score for svc: 0.475470
-
-500 words
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
   == Model: rf
-  - Fold 1...
-  -- CV score: 0.565164433618
-  -- QWK: 0.710194351848
-  - Fold 2...
-  -- CV score: 0.566392479436
-  -- QWK: 0.684824335488
-  - Mean CV score for rf: 0.565778
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
+Cross validating super model...
+Trying blend with lda
+lda Fold 2  [===================================================================================================] Time: 0:00:00
+Mean super duper CV score: 0.568823936572
+Mean super duper CV QWK: 0.728944116017
+Trying blend with svc
+svc Fold 2  [===================================================================================================] Time: 0:00:00
+Mean super duper CV score: 0.544456330229
+Mean super duper CV QWK: 0.698222344484
+Trying blend with rf
+rf Fold 2  [====================================================================================================] Time: 0:00:18
+Mean super duper CV score: 0.535977221243
+Mean super duper CV QWK: 0.70551247929
+
+    Modeling essay set  1
+    =====================
+    
+Building corpus...
+Essay 2229/2229 100% [==========================================================================================] Time: 0:00:02
+Generating features for train and leadboard sets...
+Row 1672/1672 100% [============================================================================================] Time: 0:00:02
+Row 557/557 100% [==============================================================================================] Time: 0:00:00
+Training and cross validating models...
+lda Fold 2  [===================================================================================================] Time: 0:00:00
+  - Mean score for lda: 0.554370
+  - Mean QWK for lda: 0.687272
+dtc Fold 2  [===================================================================================================] Time: 0:00:00
+  - Mean score for dtc: 0.488045
+  - Mean QWK for dtc: 0.573906
+svc Fold 2  [===================================================================================================] Time: 0:00:01
+  - Mean score for svc: 0.475944
+  - Mean QWK for svc: 0.580056
+gnb Fold 2  [===================================================================================================] Time: 0:00:00
+  - Mean score for gnb: 0.400743
+  - Mean QWK for gnb: 0.470800
+rf Fold 2  [====================================================================================================] Time: 0:00:14
+  - Mean score for rf: 0.568160
+  - Mean QWK for rf: 0.707764
+mnb Fold 2  [===================================================================================================] Time: 0:00:00
+  - Mean score for mnb: 0.501298
+  - Mean QWK for mnb: 0.603753
+Building super training set...
+  == Model: lda
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
+  == Model: dtc
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
   == Model: svc
-  - Fold 1...
-  -- CV score: 0.476248477467
-  -- QWK: 0.563955520895
-  - Fold 2...
-  -- CV score: 0.47473560517
-  -- QWK: 0.56887925668
-  - Mean CV score for svc: 0.475492
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
+  == Model: gnb
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
+  == Model: rf
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
+  == Model: mnb
+  -- training...
+  -- predicting cv...
+  -- predicting lb...
+Cross validating super model...
+lda Fold 2  [===================================================================================================] Time: 0:00:00
+Mean super duper CV score: 0.567623907678
+Mean super duper CV QWK: 0.709310710413
+dtc Fold 2  [===================================================================================================] Time: 0:00:00
+Mean super duper CV score: 0.50168434394
+Mean super duper CV QWK: 0.642391923025
+svc Fold 2  [===================================================================================================] Time: 0:00:00
+Mean super duper CV score: 0.560753118538
+Mean super duper CV QWK: 0.700806057408
+gnb Fold 2  [===================================================================================================] Time: 0:00:00
+Mean super duper CV score: 0.603595490628
+Mean super duper CV QWK: 0.736320535449
+rf Fold 2  [====================================================================================================] Time: 0:00:17
+Mean super duper CV score: 0.554907944767
+Mean super duper CV QWK: 0.698397219231
+mnb Fold 2  [===================================================================================================] Time: 0:00:00
+Mean super duper CV score: 0.323143886332
+Mean super duper CV QWK: 0.316961906475

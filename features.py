@@ -11,12 +11,22 @@ stopset  |= set(stripper)
 stopset  |= set('')
 def getTokens(text):
   tokens = word_tokenize(text)
+  tokens = [token for token in tokens if len(token) > 0]
+  return tokens
+
+def getStems(tokens):
   tokens = [token.strip(stripper).lower() for token in tokens]
   tokens = [stemmer.stem(token) for token in tokens if token not in stopset]
   tokens = [token for token in tokens if len(token) > 0]
   return tokens
 
-def getCorpus(essays, n=200):
+punct = re.compile(r'^[\'"`~!@$\.,]*$').match
+def getTags(tokens):
+  tags = pos_tag(tokens)
+  tags = [tag[1] for tag in tags]
+  return tags
+
+def getCorpus(tokenized_essays, n=200):
   ''' Generate a corpus of words used in example rows
   sorted by most popular and truncated at an arbitrary limit, n.
 
@@ -24,17 +34,17 @@ def getCorpus(essays, n=200):
   essays  -- Essay vector
   n       -- Max words to include in corpus
   '''
-  m = len(essays)
+  m = len(tokenized_essays)
   pwidgets =  ['Essay ', Counter(), '/', str(m), ' ', Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
   pbar = ProgressBar(widgets=pwidgets, maxval=m)
   pbar.start()
   words = dict()
-  for (i, essay) in enumerate(essays):
+  for (i, essay) in enumerate(tokenized_essays):
     pbar.update(i)
-    tokens = set(getTokens(essay)) # Uniq tokens
+    tokens = set(getStems(essay)) # Uniq tokens
     for token in tokens:
-      try: words[token] += 1
-      except: words[token] = 1
+      if not token in words: words[token] = 0
+      words[token] += 1
   pbar.finish()
   words = sorted(words.iteritems(), key=operator.itemgetter(1), reverse=True)
   words = words[:n] # I wish I could keep them all, but I can't! :(
@@ -42,7 +52,27 @@ def getCorpus(essays, n=200):
   w = dict(zip(words, range(len(words))))
   return (w, words)
 
-def getFeatures(rows, words, h, w, extras=[]):
+def getTagCorpus(tokenized_essays, n=200):
+  '''Same as get corpus, but return parts of speech'''
+  m = len(tokenized_essays)
+  pwidgets =  ['Essay ', Counter(), '/', str(m), ' ', Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
+  pbar = ProgressBar(widgets=pwidgets, maxval=m)
+  pbar.start()
+  tags = dict()
+  for (i, essay) in enumerate(tokenized_essays):
+    pbar.update(i)
+    essay_tags = set(getTags(essay))
+    for tag in essay_tags:
+      if not tag in tags: tags[tag] = 0
+      tags[tag] += 1
+  pbar.finish()
+  tags = sorted(tags.iteritems(), key=operator.itemgetter(1), reverse=True)
+  tags = tags[:n] # Keep n
+  tags = [tag[0] for tag in tags]
+  t = dict(zip(tags, range(len(tags))))
+  return (t, tags)
+
+def getFeatures(rows, words, tags, h, w, t, extras=[]):
   '''Create output header and feature rows.
 
   Keyword arguments:
@@ -53,7 +83,7 @@ def getFeatures(rows, words, h, w, extras=[]):
   extras  -- Columns to copy from infile to outfile
   '''
   set_features = []
-  outheader = ['Id'] + extras + ['Color', 'Length', 'Tokens', 'PunctCt'] + words
+  outheader = ['Id'] + extras + ['Color', 'Length', 'Stems', 'Tags', 'PunctCt'] + words + tags
   oh = dict(zip(outheader, range(len(outheader))))
   discards = set()
   unavail_extras = set()
@@ -75,6 +105,8 @@ def getFeatures(rows, words, h, w, extras=[]):
       essay_text = row[h['EssayText']]
 
     my_tokens = getTokens(essay_text)
+    my_stems = getStems(my_tokens)
+    my_tags = getTags(my_tokens)
 
     # Start with the Id
     features[oh['Id']] = row[h['Id']]
@@ -89,17 +121,22 @@ def getFeatures(rows, words, h, w, extras=[]):
 
     # Add character length
     features[oh['Length']] = len(row[h['EssayText']])
-
-    features[oh['Tokens']] = len(my_tokens)
+    features[oh['Stems']] = len(my_stems)
+    features[oh['Tags']] = len(my_tags)
 
     features[oh['PunctCt']] = 0
     for char in list(row[h['EssayText']]):
       if char in set(string.punctuation): features[oh['PunctCt']] += 1
 
     # Add words
-    for token in my_tokens:
-      try: features[oh[token]] = 1
-      except KeyError: discards.add(token)
+    for stem in my_stems:
+      if stem in oh:
+        features[oh[stem]] += 1
+
+    # Add parts of speech
+    for tag in my_tags:
+      if tag in oh:
+        features[oh[tag]] += 1
 
     features = [f for f in features]
 
@@ -109,6 +146,8 @@ def getFeatures(rows, words, h, w, extras=[]):
   pbar.finish()
   outheader = [col for col in outheader]
   outheadermap = dict(zip(outheader, range(len(outheader))))
+  print outheader
+  print set_features[0]
   return (outheader, outheadermap, set_features, discards)
 
 if __name__ == "__main__":

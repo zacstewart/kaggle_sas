@@ -2,6 +2,9 @@ from datasets import *
 from features import *
 from sklearn.ensemble import *
 from sklearn.lda import LDA
+from sklearn.naive_bayes import *
+from sklearn.linear_model import *
+from sklearn import tree
 from sklearn import svm
 from ml_metrics import *
 
@@ -9,6 +12,7 @@ if __name__ == "__main__":
   thead, th, trows = readFile('data/train_rel_2.tsv')
   lhead, lh, lrows = readFile('data/public_leaderboard_rel_2.tsv')
   all_sub_rows = []
+  k = 10
   for i in essaySets():
     print '''
     Modeling essay set %(set)2i
@@ -19,35 +23,50 @@ if __name__ == "__main__":
     strows = essaySet(i, trows, th)
     slrows = essaySet(i, lrows, lh)
     all_essays =  essayVec(strows, th)
-    all_essays += essayVec(slrows, lh) # TODO: Try without this
+    #all_essays += essayVec(slrows, lh) # TODO: Try without this
 
     # Create corpus with all_essays
+    print 'Tokenizing essays...'
+    tokenized_essays = [getTokens(essay) for essay in all_essays]
     print 'Building corpus...'
-    w, my_corpus = getCorpus(all_essays)
+    w, my_corpus = getCorpus(tokenized_essays)
+    print 'Building tag corpus...'
+    t, tag_corpus = getTagCorpus(tokenized_essays)
 
     print 'Generating features for train and leadboard sets...'
-    thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, th, w, ['EssaySet', 'Score1'])
-    lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, lh, w, ['EssaySet', 'Score1'])
+    thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, ['EssaySet', 'Score1'])
+    lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, lh, w, t, ['EssaySet', 'Score1'])
 
     lx = [row[lfh['Length']:] for row in lfeatures]
 
     print 'Training and cross validating models...'
     models = {
+        'gnb': GaussianNB(),
+        'mnb': MultinomialNB(),
+        'dtc': tree.DecisionTreeClassifier(),
         'lda': LDA(),
+        'lr': LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0,
+          fit_intercept=True, intercept_scaling=1, class_weight=None),
+        'rc': RidgeClassifier(alpha=1.0, fit_intercept=True, normalize=False,
+          copy_X=True, tol=0.001, class_weight=None),
         'svc': svm.SVC(C=100.0, cache_size=200, class_weight=None, coef0=0.0, degree=3,
           gamma=0.001, kernel='rbf', probability=False, shrinking=True, tol=0.001,
           verbose=False),
+        'lsvc': svm.LinearSVC(penalty='l2', loss='l2', dual=True, tol=0.0001, C=1.0,
+          multi_class='ovr', fit_intercept=True, intercept_scaling=1,
+          class_weight=None, verbose=0),
         'rf': RandomForestClassifier(n_estimators=150, min_samples_split=2, n_jobs=-1)}
     scores = dict()
-    k = 10
     folds = kFold(tfeatures, k)
     for mname, model in models.items():
-      print '  == Model: ' + mname
       cv_scores = []
       qwks = []
-      for j in range(k):
-        print "  - Fold %(fold)i..." % {'fold': j + 1}
-        # Get train and lb rows for this essay set
+      pwidgets =  [mname, ' Fold ', Counter(), ' ', ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
+      foldbar = ProgressBar(widgets=pwidgets, maxval=k)
+      foldbar.start()
+      for i, j in enumerate(range(k)):
+        foldbar.update(i)
+          # Get train and lb rows for this essay set
         a = [row for rows in folds[:j] for row in rows]
         b = [row for rows in folds[j+1:] for row in rows]
         tffeatures = a + b
@@ -66,12 +85,11 @@ if __name__ == "__main__":
         qwk = quadratic_weighted_kappa(cy, p, 0, 3)
         cv_scores.append(score)
         qwks.append(qwk)
-        print '  -- CV score: ' + str(score)
-        print '  -- QWK: ' + str(qwk)
+      foldbar.finish()
 
       cv_mean = sum(cv_scores) / len(cv_scores)
       qwk_mean = sum(qwks) / len(qwks)
-      print '  - Mean CV score for %(model)s: %(score)f' % {'model': mname, 'score': cv_mean}
+      print '  - Mean score for %(model)s: %(score)f' % {'model': mname, 'score': cv_mean}
       print '  - Mean QWK for %(model)s: %(score)f' % {'model': mname, 'score': qwk_mean}
       scores[mname] = cv_mean
 
@@ -121,9 +139,11 @@ if __name__ == "__main__":
     for mname, model in models.items():
       superduperscores = []
       superduperqwks = []
-      print "Trying blend with " + mname
-      for j in range(k):
-        print 'Fold ' + str(j + 1)
+      pwidgets =  [mname, ' Fold ', Counter(), ' ', ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
+      foldbar = ProgressBar(widgets=pwidgets, maxval=k)
+      foldbar.start()
+      for i, j in enumerate(range(k)):
+        foldbar.update(i)
         a = [row for rows in folds[:j] for row in rows]
         b = [row for rows in folds[j+1:] for row in rows]
         superdupertrain = a + b
@@ -132,7 +152,6 @@ if __name__ == "__main__":
         trainy = [row[1] for row in superdupertrain]
         cvx = [row[2:] for row in superdupercv]
         cvy = [row[1] for row in superdupercv]
-        print 'Training...'
         model.fit(trainx, trainy)
         score = model.score(cvx, cvy)
         superduperscores.append(score)
@@ -140,6 +159,7 @@ if __name__ == "__main__":
         preds = [int(p) for p in preds]
         qwk = quadratic_weighted_kappa(cvy, preds, 0, 3)
         superduperqwks.append(qwk)
+      foldbar.finish()
       mean_superduper_score = sum(superduperscores) / len(superduperscores)
       mean_superduper_qwk = sum(superduperqwks) / len(superduperqwks)
       print 'Mean super duper CV score: ' + str(mean_superduper_score)
