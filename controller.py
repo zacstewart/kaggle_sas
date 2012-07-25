@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     print 'Training and cross validating models...'
     models = {'rf': RfModel()}
-    scores = {'rf': 0}
+    scores = dict()
     k = 10
     folds = kFold(tfeatures, k)
     for mname, model in models.items():
@@ -40,22 +40,46 @@ if __name__ == "__main__":
         # Get train and lb rows for this essay set
         a = [row for rows in folds[:j] for row in rows]
         b = [row for rows in folds[j+1:] for row in rows]
-        tfeatures = a + b
-        cfeatures = folds[j]
+        tffeatures = a + b
+        cffeatures = folds[j]
 
-        tx = [row[tfh['Length']:] for row in tfeatures]
-        ty = [row[tfh['Score1']] for row in tfeatures]
+        tx = [row[tfh['Length']:] for row in tffeatures]
+        ty = [row[tfh['Score1']] for row in tffeatures]
 
-        cx = [row[tfh['Length']:] for row in cfeatures]
-        cy = [row[tfh['Score1']] for row in cfeatures]
+        cx = [row[tfh['Length']:] for row in cffeatures]
+        cy = [row[tfh['Score1']] for row in cffeatures]
 
 
-        rf_model = RfModel()
-        rf_model.train(tx, ty)
-        score = rf_model.validate(cx, cy)
+        model.train(tx, ty)
+        score = model.validate(cx, cy)
         cv_scores.append(score)
         print '  -- CV score: ' + str(score)
 
       cv_mean = sum(cv_scores) / len(cv_scores)
       print '  - Mean CV score for %(model)s: %(score)f' % {'model': mname, 'score': cv_mean}
       scores[mname] = cv_mean
+
+    print 'Building super training set...'
+
+    cv, train = cvSplit(tfeatures, .3)
+    trainx = [row[tfh['Length']:] for row in train]
+    trainy = [row[tfh['Score1']] for row in train]
+    cvx = [row[tfh['Length']:] for row in cv]
+    cvy = [row[tfh['Score1']] for row in cv]
+
+    predictions = dict()
+    supertrainhead = ['Id', 'Score1'] + models.keys()
+    sth = dict(zip(supertrainhead, range(len(supertrainhead))))
+    supertrain = []
+    for mname, model in models.items():
+      print '  == Model: ' + mname
+      print '  -- training...'
+      model.train(trainx, trainy)
+      print '  -- predicting...'
+      predictions[mname] = model.predict(cvx)
+    for (i, row) in enumerate(cv):
+      supertrainrow = [None for _ in range(len(supertrainhead))]
+      supertrainrow[sth['Id']] = row[th['Id']]
+      supertrainrow[sth['Score1']] = row[th['Score1']]
+      for mname in models.keys():
+        supertrainrow[sth[mname]] = predictions[mname][i]

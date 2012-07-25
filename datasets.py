@@ -37,9 +37,9 @@ def essaySets(rows=None, h=None):
   return set(row[h['EssaySet']] for row in rows)
 
 def essaySet(s, rows=None, h=None):
+  '''Get the rows for a specific essay set'''
   TRAIN_FILE = 'data/train_rel_2.tsv'
   LEADERBOARD_FILE = 'data/public_leaderboard_rel_2.tsv'
-  '''Get the rows for a specific essay set'''
   if rows is None or h is None: _, h, rows = readFile(TRAIN_FILE)
   return [row for row in rows if row[h['EssaySet']] == s]
 
@@ -64,6 +64,17 @@ def kFold(rows, k):
     i = int(round(random()*k)) - 1
     folds[i].append(row)
   return folds
+
+def cvSplit(rows, cvfrac):
+  n = len(rows)
+  cv = []
+  train = []
+  for row in rows:
+    if random() >= cvfrac:
+      cv.append(row)
+    else:
+      train.append(row)
+  return (cv, train)
 
 if __name__ == '__main__':
   print essaySets()
