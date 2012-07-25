@@ -4,7 +4,6 @@ import string
 import sys
 import operator
 
-pwidgets =  [Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
 stripper =  string.punctuation + string.whitespace
 stemmer  =  PorterStemmer()
 stopset  =  set(corpus.stopwords.words('english'))
@@ -25,8 +24,9 @@ def getCorpus(essays, n=200):
   essays  -- Essay vector
   n       -- Max words to include in corpus
   '''
-  print "Creating corpus from %(essays)i essays..." % {'essays': len(essays)}
-  pbar = ProgressBar(widgets=pwidgets, maxval=len(essays))
+  m = len(essays)
+  pwidgets =  ['Essay ', Counter(), '/', str(m), ' ', Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
+  pbar = ProgressBar(widgets=pwidgets, maxval=m)
   pbar.start()
   words = dict()
   for (i, essay) in enumerate(essays):
@@ -40,7 +40,6 @@ def getCorpus(essays, n=200):
   words = words[:n] # I wish I could keep them all, but I can't! :(
   words = [word[0] for word in words]
   w = dict(zip(words, range(len(words))))
-  print "Words: " + str(len(words))
   return (w, words)
 
 def getFeatures(rows, words, h, w, extras=[]):
@@ -58,7 +57,8 @@ def getFeatures(rows, words, h, w, extras=[]):
   oh = dict(zip(outheader, range(len(outheader))))
   discards = set()
   unavail_extras = set()
-  print 'Creating features: ' + ', '.join(outheader[3:15]) + '...'
+  m = len(rows)
+  pwidgets =  ['Row ', Counter(), '/', str(m), ' ', Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
   pbar = ProgressBar(widgets=pwidgets, maxval=len(rows))
   pbar.start()
   for (i, row) in enumerate(rows):
@@ -108,10 +108,9 @@ def getFeatures(rows, words, h, w, extras=[]):
     if not row[h['EssaySet']] == '10' or not color is None:
       set_features.append(features)
   pbar.finish()
-  outheader = ['"' + col + '"' for col in outheader]
-  print "Discarded " + str(len(discards)) + " words"
-  print "Unavailable extras: " + ", ".join(unavail_extras)
-  return (outheader, set_features, discards)
+  outheader = [col for col in outheader]
+  outheadermap = dict(zip(outheader, range(len(outheader))))
+  return (outheader, outheadermap, set_features, discards)
 
 if __name__ == "__main__":
   if len(sys.argv) >= 4:

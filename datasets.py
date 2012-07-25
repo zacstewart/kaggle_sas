@@ -1,3 +1,5 @@
+from random import *
+
 ######################
 # Basic IO
 ######################
@@ -35,6 +37,8 @@ def essaySets(rows=None, h=None):
   return set(row[h['EssaySet']] for row in rows)
 
 def essaySet(s, rows=None, h=None):
+  TRAIN_FILE = 'data/train_rel_2.tsv'
+  LEADERBOARD_FILE = 'data/public_leaderboard_rel_2.tsv'
   '''Get the rows for a specific essay set'''
   if rows is None or h is None: _, h, rows = readFile(TRAIN_FILE)
   return [row for row in rows if row[h['EssaySet']] == s]
@@ -51,6 +55,15 @@ def essayVec(rows=None, h=None):
       essay = row[h['EssayText']]
     essays.append(essay)
   return essays
+
+def kFold(rows, k):
+  '''Split rows in to k folds. Returns list of lists.'''
+  n = len(rows)
+  folds = [[] for i in range(k)]
+  for row in rows:
+    i = int(round(random()*k)) - 1
+    folds[i].append(row)
+  return folds
 
 if __name__ == '__main__':
   print essaySets()
