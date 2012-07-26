@@ -7,4 +7,4 @@ a super learner.
 
 ## How to do it
 1. Download the data from Kaggle and put it in _data/_
-2. `python controller.py`
+2. `python controller.py; say "derp derp herp derp herp"`
