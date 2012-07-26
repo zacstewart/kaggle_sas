@@ -20,12 +20,17 @@ def parseLine(line, h):
   row[h['EssaySet']] = int(row[h['EssaySet']])
   return row
 
-def readFile(filename, delimiter="\t"):
+def readFile(filename, delimiter="\t", strings=False, numeric=False):
   '''Reads a file and returns a header, a header index map and rows'''
   f = open(filename, 'rb')
-  header = f.readline().strip().split('\t')
+  header = f.readline().strip().split(delimiter)
   headermap = dict(zip(header, range(len(header))))
-  rows = [parseLine(line, headermap) for line in f]
+  if numeric:
+    rows = [[int(v) for v in line.strip().split(delimiter)] for line in f]
+  elif strings:
+    rows = [[str(v) for v in line.strip().split(delimiter)] for line in f]
+  else:
+    rows = [parseLine(line, headermap) for line in f]
   return (header, headermap, rows)
 
 def writeFile(header, rows, filename):

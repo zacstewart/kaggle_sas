@@ -1,11 +1,15 @@
+import sys
 from datasets import *
 from features import *
 from sklearn.ensemble import *
 from sklearn.lda import LDA
 from sklearn.naive_bayes import *
 from sklearn.linear_model import *
+from sklearn.neighbors import *
+from sklearn.neighbors.nearest_centroid import NearestCentroid
 from sklearn import tree
 from sklearn import svm
+from sklearn import gaussian_process
 from ml_metrics import *
 
 if __name__ == "__main__":
@@ -19,28 +23,8 @@ if __name__ == "__main__":
     =====================
     ''' % {'set': i}
 
-    # Get all essays for train+lb
-    strows = essaySet(i, trows, th)
-    slrows = essaySet(i, lrows, lh)
-    all_essays =  essayVec(strows, th)
-    #all_essays += essayVec(slrows, lh) # TODO: Try without this
-
-    # Create corpus with all_essays
-    print 'Tokenizing essays...'
-    tokenized_essays = [getTokens(essay) for essay in all_essays]
-    print 'Building corpus...'
-    w, my_corpus = getCorpus(tokenized_essays)
-    print 'Building tag corpus...'
-    t, tag_corpus = getTagCorpus(tokenized_essays)
-
-    print 'Generating features for train and leadboard sets...'
-    thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, ['EssaySet', 'Score1'])
-    lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, lh, w, t, ['EssaySet', 'Score1'])
-
-    lx = [row[lfh['Length']:] for row in lfeatures]
-
-    print 'Training and cross validating models...'
-    models = {
+    classifiers = {
+        'ncn': NearestCentroid(metric='euclidean', shrink_threshold=None),
         'gnb': GaussianNB(),
         'mnb': MultinomialNB(),
         'dtc': tree.DecisionTreeClassifier(),
@@ -56,11 +40,61 @@ if __name__ == "__main__":
           multi_class='ovr', fit_intercept=True, intercept_scaling=1,
           class_weight=None, verbose=0),
         'rf': RandomForestClassifier(n_estimators=150, min_samples_split=2, n_jobs=-1)}
+    regressors = {
+        'gbr': GradientBoostingRegressor(n_estimators=100, learn_rate=1.0,
+          max_depth=1, random_state=0, loss='ls'),
+        'dtr': tree.DecisionTreeRegressor(),
+        #'gp': gaussian_process.GaussianProcess(theta0=1e-2, thetaL=1e-4, thetaU=1e-1),
+        'svr': svm.SVR(C=1.0, cache_size=200, coef0=0.0, degree=3,
+          epsilon=0.1, gamma=0.5, kernel='rbf', probability=False, shrinking=True,
+          tol=0.001, verbose=False),
+        'ridge': Ridge(alpha=0.5, copy_X=True, fit_intercept=True, normalize=False, tol=0.001),
+        'knnr': KNeighborsRegressor(n_neighbors=5, weights='uniform', algorithm='auto',
+          leaf_size=30, warn_on_equidistant=True, p=2)}
+    models = dict(classifiers.items() + regressors.items())
+/
+    # Get all essays for train+lb
+    strows = essaySet(i, trows, th)
+    slrows = essaySet(i, lrows, lh)
+    all_essays =  essayVec(strows, th)
+    #all_essays += essayVec(slrows, lh) # TODO: Try without this
+
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'cached':
+      print 'Loading saved corpuses...'
+      my_corpus, w, _ = readFile('data/stem_corpus.csv', ',', strings=True)
+      tag_corpus, t, _ = readFile('data/tag_corpus.csv', ',', strings=True)
+    else:
+      # Create corpus with all_essays
+      print 'Tokenizing essays...'
+      tokenized_essays = [getTokens(essay) for essay in all_essays]
+      print 'Building corpus...'
+      w, my_corpus = getCorpus(tokenized_essays)
+      print 'Building tag corpus...'
+      t, tag_corpus = getTagCorpus(tokenized_essays)
+      writeFile(my_corpus, [], 'data/stem_corpus.csv')
+      writeFile(tag_corpus, [], 'data/tag_corpus.csv')
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'cached':
+      print 'Loading saved features...'
+      thead, tfh, tfeatures = readFile('data/train_features.csv', ',', numeric=True)
+      lhead, lfh, lfeatures = readFile('data/lb_features.csv', ',', numeric=True)
+    else:
+      print 'Generating features for train and leadboard sets...'
+      thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, ['EssaySet', 'Score1'])
+      lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, lh, w, t, ['EssaySet', 'Score1'])
+      writeFile(thead, tfeatures, 'data/train_features.csv')
+      writeFile(lhead, lfeatures, 'data/lb_features.csv')
+
+    lx = [row[lfh['Length']:] for row in lfeatures]
+
+    print 'Training and cross validating models...'
     scores = dict()
     folds = kFold(tfeatures, k)
     for mname, model in models.items():
       cv_scores = []
       qwks = []
+      rmses = []
       pwidgets =  [mname, ' Fold ', Counter(), ' ', ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
       foldbar = ProgressBar(widgets=pwidgets, maxval=k)
       foldbar.start()
@@ -82,16 +116,24 @@ if __name__ == "__main__":
         score = model.score(cx, cy)
         p = model.predict(cx)
         p = [int(pe) for pe in p]
-        qwk = quadratic_weighted_kappa(cy, p, 0, 3)
+        if mname in classifiers:
+          qwk = quadratic_weighted_kappa(cy, p, 0, 3)
+          qwks.append(qwk)
+        else:
+          my_rmse = rmse(cy, p)
+          rmses.append(my_rmse)
         cv_scores.append(score)
-        qwks.append(qwk)
       foldbar.finish()
 
       cv_mean = sum(cv_scores) / len(cv_scores)
-      qwk_mean = sum(qwks) / len(qwks)
       print '  - Mean score for %(model)s: %(score)f' % {'model': mname, 'score': cv_mean}
-      print '  - Mean QWK for %(model)s: %(score)f' % {'model': mname, 'score': qwk_mean}
       scores[mname] = cv_mean
+      if mname in classifiers:
+        qwk_mean = sum(qwks) / len(qwks)
+        print '  - Mean QWK for %(model)s: %(score)f' % {'model': mname, 'score': qwk_mean}
+      if mname in regressors:
+        rmse_mean = sum(rmses) / len(rmses)
+        print '  - Mean RMSE for %(model)s: %(score)f' % {'model': mname, 'score': rmse_mean}
 
     print 'Building super training set...'
 
@@ -103,11 +145,11 @@ if __name__ == "__main__":
 
     cv_predictions = dict()
     lb_predictions = dict()
-    supertrainhead = ['Id', 'Score1'] + models.keys()
-    superlbhead = ['Id'] + models.keys()
+    supertrainhead = ['Id', 'Score1'] + classifiers.keys()
+    superlbhead = ['Id'] + classifiers.keys()
     sth = dict(zip(supertrainhead, range(len(supertrainhead))))
     slh = dict(zip(superlbhead, range(len(superlbhead))))
-    for mname, model in models.items():
+    for mname, model in classifiers.items():
       print '  == Model: ' + mname
       print '  -- training...'
       model.fit(trainx, trainy)
@@ -121,7 +163,7 @@ if __name__ == "__main__":
       supertrainrow = [None for _ in range(len(supertrainhead))]
       supertrainrow[sth['Id']] = row[th['Id']]
       supertrainrow[sth['Score1']] = row[th['Score1']]
-      for mname in models.keys():
+      for mname in classifiers.keys():
         supertrainrow[sth[mname]] = int(cv_predictions[mname][i])
       supertrain.append(supertrainrow)
 
@@ -129,16 +171,17 @@ if __name__ == "__main__":
     for (i, row) in enumerate(lfeatures):
       superlbrow = [None for _ in range(len(superlbhead))]
       superlbrow[slh['Id']] = row[lh['Id']]
-      for mname in models.keys():
+      for mname in classifiers.keys():
         superlbrow[slh[mname]] = int(lb_predictions[mname][i])
       superlb.append(superlbrow)
 
     print 'Cross validating super model...'
     folds = kFold(supertrain, k)
     modelscores = dict()
-    for mname, model in models.items():
+    for mname, model in classifiers.items():
       superduperscores = []
       superduperqwks = []
+      superduperrmses = []
       pwidgets =  [mname, ' Fold ', Counter(), ' ', ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
       foldbar = ProgressBar(widgets=pwidgets, maxval=k)
       foldbar.start()
@@ -157,18 +200,22 @@ if __name__ == "__main__":
         superduperscores.append(score)
         preds = model.predict(cvx)
         preds = [int(p) for p in preds]
-        qwk = quadratic_weighted_kappa(cvy, preds, 0, 3)
-        superduperqwks.append(qwk)
+        if mname in classifiers:
+          qwk = quadratic_weighted_kappa(cvy, preds, 0, 3)
+          superduperqwks.append(qwk)
+        elif mname in regressors:
+          my_rmse = rmse(cvy, preds)
+          superduperrmses.append(my_rmse)
       foldbar.finish()
       mean_superduper_score = sum(superduperscores) / len(superduperscores)
-      mean_superduper_qwk = sum(superduperqwks) / len(superduperqwks)
       print 'Mean super duper CV score: ' + str(mean_superduper_score)
+      mean_superduper_qwk = sum(superduperqwks) / len(superduperqwks)
       print 'Mean super duper CV QWK: ' + str(mean_superduper_qwk)
       modelscores[mname] = mean_superduper_qwk
 
     bestmodel = sorted(modelscores.iteritems(), key=operator.itemgetter(1), reverse=True)[0][0]
 
-    final_model = models[bestmodel]
+    final_model = classifiers[bestmodel]
     final_trainx = [row[2:] for row in supertrain]
     final_trainy = [row[1] for row in supertrain]
     final_lbx = [row[1:] for row in superlb]

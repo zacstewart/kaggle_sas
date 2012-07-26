@@ -146,8 +146,6 @@ def getFeatures(rows, words, tags, h, w, t, extras=[]):
   pbar.finish()
   outheader = [col for col in outheader]
   outheadermap = dict(zip(outheader, range(len(outheader))))
-  print outheader
-  print set_features[0]
   return (outheader, outheadermap, set_features, discards)
 
 if __name__ == "__main__":
