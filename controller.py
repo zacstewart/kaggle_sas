@@ -52,7 +52,7 @@ if __name__ == "__main__":
         'knnr': KNeighborsRegressor(n_neighbors=5, weights='uniform', algorithm='auto',
           leaf_size=30, warn_on_equidistant=True, p=2)}
     models = dict(classifiers.items() + regressors.items())
-/
+
     # Get all essays for train+lb
     strows = essaySet(i, trows, th)
     slrows = essaySet(i, lrows, lh)
