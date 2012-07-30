@@ -83,7 +83,7 @@ def getFeatures(rows, words, tags, h, w, t, extras=[]):
   extras  -- Columns to copy from infile to outfile
   '''
   set_features = []
-  outheader = ['Id'] + extras + ['Color', 'Length', 'Stems', 'Tags', 'PunctCt'] + words + tags
+  outheader = ['Id'] + extras + ['Color', 'Length', 'Stems', 'Tags', 'PunctCt', 'LongestWord', 'AvgWord'] + words + tags
   oh = dict(zip(outheader, range(len(outheader))))
   discards = set()
   unavail_extras = set()
@@ -123,6 +123,9 @@ def getFeatures(rows, words, tags, h, w, t, extras=[]):
     features[oh['Length']] = len(row[h['EssayText']])
     features[oh['Stems']] = len(my_stems)
     features[oh['Tags']] = len(my_tags)
+    wordlens = map(lambda w: len(w), my_tokens)
+    features[oh['LongestWord']] = max(wordlens)
+    features[oh['AvgWord']] = sum(wordlens) / len(wordlens)
 
     features[oh['PunctCt']] = 0
     for char in list(row[h['EssayText']]):
