@@ -23,7 +23,7 @@ def getStems(tokens):
 punct = re.compile(r'^[\'"`~!@$\.,]*$').match
 def getTags(tokens):
   tags = pos_tag(tokens)
-  tags = [tag[1] for tag in tags]
+  tags = [tag[1] for tag in tags if not punct(tag[1])]
   return tags
 
 def getCorpus(tokenized_essays, n=200):
