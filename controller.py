@@ -1,16 +1,16 @@
-import sys
 from datasets import *
 from features import *
+from ml_metrics import *
+from sklearn import gaussian_process
+from sklearn import svm
+from sklearn import tree
 from sklearn.ensemble import *
 from sklearn.lda import LDA
-from sklearn.naive_bayes import *
 from sklearn.linear_model import *
+from sklearn.naive_bayes import *
 from sklearn.neighbors import *
 from sklearn.neighbors.nearest_centroid import NearestCentroid
-from sklearn import tree
-from sklearn import svm
-from sklearn import gaussian_process
-from ml_metrics import *
+import sys
 
 if __name__ == "__main__":
   thead, th, trows = readFile('data/train_rel_2.tsv')
