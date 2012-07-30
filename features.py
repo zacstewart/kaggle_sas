@@ -26,7 +26,7 @@ def getTags(tokens):
   tags = [tag[1] for tag in tags if not punct(tag[1])]
   return tags
 
-def getCorpus(tokenized_essays, n=200):
+def getCorpus(tokenized_essays, n=1000):
   ''' Generate a corpus of words used in example rows
   sorted by most popular and truncated at an arbitrary limit, n.
 
@@ -52,7 +52,7 @@ def getCorpus(tokenized_essays, n=200):
   w = dict(zip(words, range(len(words))))
   return (w, words)
 
-def getTagCorpus(tokenized_essays, n=200):
+def getTagCorpus(tokenized_essays, n=1000):
   '''Same as get corpus, but return parts of speech'''
   m = len(tokenized_essays)
   pwidgets =  ['Essay ', Counter(), '/', str(m), ' ', Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
