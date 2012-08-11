@@ -60,8 +60,8 @@ if __name__ == "__main__":
     #all_essays += essayVec(slrows, lh) # TODO: Try without this
 
 
-    stem_corpus_fn = 'data/cache/stem_corpus.csv'
-    tag_corpus_fn = 'data/cache/tag_corpus.csv'
+    stem_corpus_fn = "data/cache/stem_corpus_%(essay)2i.csv" % {'essay': i}
+    tag_corpus_fn = "data/cache/tag_corpus_%(essay)2i.csv" % {'essay': i}
     if len(sys.argv) > 1 and sys.argv[1] == 'cached' and \
       os.path.isfile(stem_corpus_fn) and \
       os.path.isfile(tag_corpus_fn):
