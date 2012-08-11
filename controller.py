@@ -60,10 +60,14 @@ if __name__ == "__main__":
     #all_essays += essayVec(slrows, lh) # TODO: Try without this
 
 
-    if len(sys.argv) > 1 and sys.argv[1] == 'cached':
-      print 'Loading saved corpuses...'
-      my_corpus, w, _ = readFile('data/cache/stem_corpus.csv', ',', strings=True)
-      tag_corpus, t, _ = readFile('data/cache/tag_corpus.csv', ',', strings=True)
+    stem_corpus_fn = 'data/cache/stem_corpus.csv'
+    tag_corpus_fn = 'data/cache/tag_corpus.csv'
+    if len(sys.argv) > 1 and sys.argv[1] == 'cached' and \
+      os.path.isfile(stem_corpus_fn) and \
+      os.path.isfile(tag_corpus_fn):
+        print 'Loading saved corpuses...'
+        my_corpus, w, _ = readFile(stem_corpus_fn, ',', strings=True)
+        tag_corpus, t, _ = readFile(tag_corpus_fn, ',', strings=True)
     else:
       # Create corpus with all_essays
       print 'Tokenizing essays...'
@@ -72,15 +76,17 @@ if __name__ == "__main__":
       w, my_corpus = getCorpus(tokenized_essays)
       print 'Building tag corpus...'
       t, tag_corpus = getTagCorpus(tokenized_essays)
-      writeFile(my_corpus, [], 'data/cache/stem_corpus.csv')
-      writeFile(tag_corpus, [], 'data/cache/tag_corpus.csv')
+      writeFile(my_corpus, [], stem_corpus_fn)
+      writeFile(tag_corpus, [], tag_corpus_fn)
 
     train_features_fn = "data/cache/train_features_%(essay)2i" % {'essay': i}
     lb_features_fn = "data/cache/lb_features_%(essay)2i" % {'essay': i}
-    if len(sys.argv) > 1 and sys.argv[1] == 'cached':
-      print 'Loading saved features...'
-      thead, tfh, tfeatures = readFile(train_features_fn, ',', numeric=True)
-      lhead, lfh, lfeatures = readFile(lb_features_fn, ',', numeric=True)
+    if len(sys.argv) > 1 and sys.argv[1] == 'cached' and \
+      os.path.isfile(train_features_fn) and \
+      os.path.isfile(lb_features_fn):
+        print 'Loading saved features...'
+        thead, tfh, tfeatures = readFile(train_features_fn, ',', numeric=True)
+        lhead, lfh, lfeatures = readFile(lb_features_fn, ',', numeric=True)
     else:
       print 'Generating features for train and leadboard sets...'
       thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, ['EssaySet', 'Score1'])
