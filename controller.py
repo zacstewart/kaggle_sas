@@ -1,5 +1,6 @@
 from datasets import *
 from features import *
+from train import *
 from ml_metrics import *
 from sklearn import gaussian_process
 from sklearn import svm
@@ -10,6 +11,8 @@ from sklearn.linear_model import *
 from sklearn.naive_bayes import *
 from sklearn.neighbors import *
 from sklearn.neighbors.nearest_centroid import NearestCentroid
+import scipy
+import numpy
 import sys
 
 if __name__ == "__main__":
@@ -40,6 +43,42 @@ if __name__ == "__main__":
         multi_class='ovr', fit_intercept=True, intercept_scaling=1,
         class_weight=None, verbose=0),
       'rf': RandomForestClassifier(n_estimators=150, min_samples_split=2, n_jobs=-1)}
+
+    models = [
+      {'constructor': NearestCentroid,
+        'params': dict(metric='euclidean', shrink_threshold=None),
+        'name': 'Nearest Centroid', },
+      {'constructor': GaussianNB,
+        'params': dict(),
+        'name': 'Gaussian Naive Bayes'},
+      {'constructor': MultinomialNB,
+        'params': dict(),
+        'name': 'Multinominal Naive Bayes'},
+      {'constructor': tree.DecisionTreeClassifier,
+        'params': dict(),
+        'name': 'Decision Tree Classifier'},
+      {'constructor': LDA,
+        'params': dict(),
+        'name': 'lda'},
+      {'constructor': LogisticRegression,
+        'params': dict(penalty='l2', dual=False, tol=0.0001, C=1.0,
+          fit_intercept=True, intercept_scaling=1, constructor_weight=None),
+        'name': 'Logistic Regression'},
+      {'constructor': RidgeClassifier,
+        'params': dict(alpha=1.0, fit_intercept=True, normalize=False,
+          copy_X=True, tol=0.001, constructor_weight=None),
+        'name': 'Ridge Classifier'},
+      {'constructor': svm.SVC,
+        'params': dict(C=100.0, cache_size=200, constructor_weight=None, coef0=0.0, degree=3,
+          gamma=0.001, kernel='rbf', probability=False, shrinking=True, tol=0.001, verbose=False),
+        'name': 'SVC'},
+      {'constructor': svm.LinearSVC,
+        'params': dict(penalty='l2', loss='l2', dual=True, tol=0.0001, C=1.0,
+          multi_constructor='ovr', fit_intercept=True, intercept_scaling=1, constructor_weight=None, verbose=0),
+        'name': 'Linear SVC'},
+      {'constructor': RandomForestClassifier,
+        'params': dict(n_estimators=150, min_samples_split=2, n_jobs=-1),
+        'name': 'Random Forest Classifier'}]
 
     # Get all essays for train+lb
     strows = essaySet(i, trows, th)
@@ -87,40 +126,11 @@ if __name__ == "__main__":
     print 'Training and cross validating models...'
     scores = dict()
     folds = kFold(tfeatures, k)
-    for mname, model in models.items():
-      cv_scores = []
-      qwks = []
-      pwidgets =  [mname, ' Fold ', Counter(), ' ', ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
-      foldbar = ProgressBar(widgets=pwidgets, maxval=k)
-      foldbar.start()
-      for i, j in enumerate(range(k)):
-        foldbar.update(i)
-          # Get train and lb rows for this essay set
-        a = [row for rows in folds[:j] for row in rows]
-        b = [row for rows in folds[j+1:] for row in rows]
-        tffeatures = a + b
-        cffeatures = folds[j]
-
-        tx = [row[tfh['Length']:] for row in tffeatures]
-        ty = [row[tfh['Score1']] for row in tffeatures]
-
-        cx = [row[tfh['Length']:] for row in cffeatures]
-        cy = [row[tfh['Score1']] for row in cffeatures]
-
-        model.fit(tx, ty)
-        score = model.score(cx, cy)
-        p = model.predict(cx)
-        p = [int(pe) for pe in p]
-        qwk = quadratic_weighted_kappa(cy, p, 0, 3)
-        qwks.append(qwk)
-        cv_scores.append(score)
-      foldbar.finish()
-
-      cv_mean = sum(cv_scores) / len(cv_scores)
-      print '  - Mean score for %(model)s: %(score)f' % {'model': mname, 'score': cv_mean}
-      scores[mname] = cv_mean
-      qwk_mean = sum(qwks) / len(qwks)
-      print '  - Mean QWK for %(model)s: %(score)f' % {'model': mname, 'score': qwk_mean}
+    for model in models:
+      pnames = model['params'].keys()
+      params = numpy.array(model['params'].values())
+      optims = scipy.optimize.fmin_bfgs(lambda p: validate(model['constructor'], dict(zip(pnames, p)), folds), params, tick)
+      model['optims'] = optims
 
     print 'Building super training set...'
 
@@ -136,14 +146,16 @@ if __name__ == "__main__":
     superlbhead = ['Id'] + models.keys()
     sth = dict(zip(supertrainhead, range(len(supertrainhead))))
     slh = dict(zip(superlbhead, range(len(superlbhead))))
-    for mname, model in models.items():
+    for model in models:
+      mname = model['name']
+      instance = model['constructor'](model['optims'])
       print '  == Model: ' + mname
       print '  -- training...'
-      model.fit(trainx, trainy)
+      instance.fit(trainx, trainy)
       print '  -- predicting cv...'
-      cv_predictions[mname] = model.predict(cvx)
+      cv_predictions[mname] = instance.predict(cvx)
       print '  -- predicting lb...'
-      lb_predictions[mname] = model.predict(lx)
+      lb_predictions[mname] = instance.predict(lx)
 
     supertrain = []
     for (i, row) in enumerate(cv):
