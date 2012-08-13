@@ -13,8 +13,10 @@ from sklearn.neighbors.nearest_centroid import NearestCentroid
 import sys
 
 if __name__ == "__main__":
-  thead, th, trows = readFile('data/train_rel_2.tsv')
-  lhead, lh, lrows = readFile('data/public_leaderboard_rel_2.tsv')
+  #thead, th, trows = readFile('data/train_rel_2.tsv')
+  #lhead, lh, lrows = readFile('data/public_leaderboard_rel_2.tsv')
+  trows = readFile('data/train_rel_2.tsv')
+  lrows = readFile('data/public_leaderboard_rel_2.tsv')
   all_sub_rows = []
   k = 10
   for i in essaySets():
@@ -42,10 +44,10 @@ if __name__ == "__main__":
       'rf': RandomForestClassifier(n_estimators=150, min_samples_split=2, n_jobs=-1)}
 
     # Get all essays for train+lb
-    strows = essaySet(i, trows, th)
-    slrows = essaySet(i, lrows, lh)
-    all_essays =  essayVec(strows, th)
-    #all_essays += essayVec(slrows, lh) # TODO: Try without this
+    strows = essaySet(i, trows)
+    slrows = essaySet(i, lrows)
+    all_essays =  essayVec(strows)
+    #all_essays += essayVec(slrows) # TODO: Try without this
 
 
     stem_corpus_fn = "data/cache/stem_corpus_%(essay)2i.csv" % {'essay': i}
@@ -54,8 +56,8 @@ if __name__ == "__main__":
       os.path.isfile(stem_corpus_fn) and \
       os.path.isfile(tag_corpus_fn):
         print 'Loading saved corpuses...'
-        my_corpus, w, _ = readFile(stem_corpus_fn, ',', strings=True)
-        tag_corpus, t, _ = readFile(tag_corpus_fn, ',', strings=True)
+        my_corpus = readFile(stem_corpus_fn, delimeter=',', vtype='strings')
+        tag_corpus = readFile(tag_corpus_fn, delimeter=',', vtype='strings')
     else:
       # Create corpus with all_essays
       print 'Tokenizing essays...'
@@ -73,16 +75,16 @@ if __name__ == "__main__":
       os.path.isfile(train_features_fn) and \
       os.path.isfile(lb_features_fn):
         print 'Loading saved features...'
-        thead, tfh, tfeatures = readFile(train_features_fn, ',', numeric=True)
-        lhead, lfh, lfeatures = readFile(lb_features_fn, ',', numeric=True)
+        tfeatures = readFile(train_features_fn, delimeter=',', vtype='numeric')
+        lfeatures = readFile(lb_features_fn, delimiter=',', vtype='numeric')
     else:
       print 'Generating features for train and leadboard sets...'
-      thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, ['EssaySet', 'Score1'])
-      lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, lh, w, t, ['EssaySet', 'Score1'])
-      writeFile(thead, tfeatures, train_features_fn)
-      writeFile(lhead, lfeatures, lb_features_fn)
+      tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, w, t, ['EssaySet', 'Score1'])
+      lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, w, t, ['EssaySet', 'Score1'])
+      writeFile(tfeatures, train_features_fn)
+      writeFile(lfeatures, lb_features_fn)
 
-    lx = [row[lfh['Length']:] for row in lfeatures]
+    lx = [row['Length']:] for row in lfeatures]
 
     print 'Training and cross validating models...'
     scores = dict()
