@@ -3,72 +3,63 @@ from random import *
 ######################
 # Basic IO
 ######################
-def parseLine(line, h):
-  '''Splits one line into a list of values. Casts values according to
-  the headermap, +h+.
+def formatRow(row):
+  '''Splits one line into a list of values.'
 
   Keyword arguments:
-  line -- a one-line string from a data file
-  h    -- a header map produced from the first line of the datafile
+  row -- a row dict
   '''
-  row = line.strip().split('\t')
-  row[h['Id']] = int(row[h['Id']])
-  try: row[h['Score1']] = int(row[h['Score1']])
-  except: 'Ignoring Score1'
-  try: row[h['Score2']] = int(row[h['Score1']])
-  except: 'Ignoring Score2'
-  row[h['EssaySet']] = int(row[h['EssaySet']])
+  row['Id'] = int(row['Id'])
+  if 'Score1' in row: row['Score1'] = int(row['Score1'])
+  if 'Score2' in row: row['Score2'] = int(row['Score1'])
+  row['EssaySet'] = int(row['EssaySet'])
   return row
 
-def readFile(filename, delimiter="\t", strings=False, numeric=False):
-  '''Reads a file and returns a header, a header index map and rows'''
+def readFile(filename, delimiter="\t", vtype=None):
+  '''Reads a file and returns a list of dicts'''
   f = open(filename, 'rb')
   header = f.readline().strip().split(delimiter)
-  headermap = dict(zip(header, range(len(header))))
-  if numeric:
-    rows = [[int(v) for v in line.strip().split(delimiter)] for line in f]
-  elif strings:
-    rows = [[str(v) for v in line.strip().split(delimiter)] for line in f]
+  if vtype == 'numeric':
+    rows = [dict(zip(header, [int(v) for v in line.strip().split(delimiter)])) for line in f]
+  elif vtype == 'strings':
+    rows = [dict(zip(header, [str(v) for v in line.strip().split(delimiter)])) for line in f]
   else:
-    rows = [parseLine(line, headermap) for line in f]
-  return (header, headermap, rows)
+    rows = [formatRow(dict(zip(header, [v for v in line.strip().split(delimiter)]))) for line in f]
+  return rows
 
-def writeFile(header, rows, filename):
-  h = dict(zip(header, range(len(header))))
+def writeFile(rows, filename):
+  header = rows[0].keys()
   f = open(filename, 'wb')
   f.write(','.join(header) + '\n')
   for row in rows:
-    row = [str(int(v)) for v in row]
+    row = [str(int(v)) for v in row.values()]
     f.write(','.join(row) + '\n')
   f.close()
 
 ######################
 # Specific stuff
 ######################
-def essaySets(rows=None, h=None):
+def essaySets(rows=None):
   '''Determines a unique set of essay sets'''
   TRAIN_FILE = 'data/train_rel_2.tsv'
   LEADERBOARD_FILE = 'data/public_leaderboard_rel_2.tsv'
-  if rows is None or h is None: _, h, rows = readFile(TRAIN_FILE)
-  return set(row[h['EssaySet']] for row in rows)
+  if rows is None: rows = readFile(TRAIN_FILE)
+  return set(row['EssaySet'] for row in rows)
 
-def essaySet(s, rows=None, h=None):
+def essaySet(s, rows):
   '''Get the rows for a specific essay set'''
-  TRAIN_FILE = 'data/train_rel_2.tsv'
-  LEADERBOARD_FILE = 'data/public_leaderboard_rel_2.tsv'
-  if rows is None or h is None: _, h, rows = readFile(TRAIN_FILE)
-  return [row for row in rows if row[h['EssaySet']] == s]
+  if rows is None: rows = readFile(TRAIN_FILE)
+  return [row for row in rows if row['EssaySet'] == s]
 
-def essayVec(rows=None, h=None):
+def essayVec(rows):
   '''Return a list of just the essays in +rows+. useful for making
   a corpus'''
-  if rows is None or h is None: _, h, rows = readFile(TRAIN_FILE)
   essays = []
   for (i, row) in enumerate(rows):
-    if row[h['EssaySet']] == '10':
-      essay = row[h['EssayText']].split('::')[1].strip()
+    if row['EssaySet'] == '10':
+      essay = row['EssayText'].split('::')[1].strip()
     else:
-      essay = row[h['EssayText']]
+      essay = row['EssayText']
     essays.append(essay)
   return essays
 
@@ -91,6 +82,3 @@ def cvSplit(rows, cvfrac):
     else:
       train.append(row)
   return (cv, train)
-
-if __name__ == '__main__':
-  print essaySets()
