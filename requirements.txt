@@ -1,2 +1,9 @@
+PyYAML==3.10
 distribute==0.6.27
+ml-metrics==0.1.2
+nltk==2.0.2
+numpy==1.6.2
+progressbar==2.3
+scikit-learn==0.11
+scipy==0.12.0.dev-c74b315
 wsgiref==0.1.2
