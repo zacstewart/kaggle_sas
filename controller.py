@@ -1,210 +1,101 @@
+import sys
+import pickle
+import numpy as np
 from datasets import *
 from features import *
-from ml_metrics import *
-from sklearn import gaussian_process
-from sklearn import svm
-from sklearn import tree
-from sklearn.ensemble import *
-from sklearn.lda import LDA
-from sklearn.linear_model import *
-from sklearn.naive_bayes import *
-from sklearn.neighbors import *
-from sklearn.neighbors.nearest_centroid import NearestCentroid
-import sys
+from learn import *
 
 if __name__ == "__main__":
-  thead, th, trows = readFile('data/train_rel_2.tsv')
-  lhead, lh, lrows = readFile('data/public_leaderboard_rel_2.tsv')
-  all_sub_rows = []
-  k = 10
-  for i in essaySets():
-    print '''
-    Modeling essay set %(set)2i
-    =====================
-    ''' % {'set': i}
+  # Read training and LB sets and initalize submission set
+  all_training_rows, training_header = readFile('data/train_rel_2.tsv')
+  all_leaderboard_rows, leaderboard_header = readFile('data/public_leaderboard_rel_2.tsv')
+  all_submission_rows = []
+  caching = len(sys.argv) > 1 and sys.argv[1] == 'cached' # use cached data
+  k = 10 # For k-folds
 
-    models = {
-      'ncn': NearestCentroid(metric='euclidean', shrink_threshold=None),
-      'gnb': GaussianNB(),
-      'mnb': MultinomialNB(),
-      'dtc': tree.DecisionTreeClassifier(),
-      'lda': LDA(),
-      'lr': LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0,
-        fit_intercept=True, intercept_scaling=1, class_weight=None),
-      'rc': RidgeClassifier(alpha=1.0, fit_intercept=True, normalize=False,
-        copy_X=True, tol=0.001, class_weight=None),
-      'svc': svm.SVC(C=100.0, cache_size=200, class_weight=None, coef0=0.0, degree=3,
-        gamma=0.001, kernel='rbf', probability=False, shrinking=True, tol=0.001,
-        verbose=False),
-      'lsvc': svm.LinearSVC(penalty='l2', loss='l2', dual=True, tol=0.0001, C=1.0,
-        multi_class='ovr', fit_intercept=True, intercept_scaling=1,
-        class_weight=None, verbose=0),
-      'rf': RandomForestClassifier(n_estimators=150, min_samples_split=2, n_jobs=-1)}
+  for essay_set in essaySets(all_training_rows, training_header):
+    print \
+      '''
+      Modeling essay set %(essay_set)2i
+      =====================
+      ''' % dict(essay_set=essay_set)
 
-    # Get all essays for train+lb
-    strows = essaySet(i, trows, th)
-    slrows = essaySet(i, lrows, lh)
-    all_essays =  essayVec(strows, th)
-    #all_essays += essayVec(slrows, lh) # TODO: Try without this
+    # Get training and LB rows for this essay set
+    training_rows = essaySet(essay_set, all_training_rows, training_header)
+    leaderboard_rows = essaySet(essay_set, all_leaderboard_rows, leaderboard_header)
 
+    # Extract training essays
+    training_essays = essayVec(training_rows, training_header)
 
-    stem_corpus_fn = "data/cache/stem_corpus_%(essay)2i.csv" % {'essay': i}
-    tag_corpus_fn = "data/cache/tag_corpus_%(essay)2i.csv" % {'essay': i}
-    if len(sys.argv) > 1 and sys.argv[1] == 'cached' and \
-      os.path.isfile(stem_corpus_fn) and \
-      os.path.isfile(tag_corpus_fn):
-        print 'Loading saved corpuses...'
-        my_corpus, w, _ = readFile(stem_corpus_fn, ',', strings=True)
-        tag_corpus, t, _ = readFile(tag_corpus_fn, ',', strings=True)
+    # Corpus cache filenames
+    stem_corpus_file = 'data/cache/stem_corpus_' + str(essay_set) + '.pkl'
+    tag_corpus_file = 'data/cache/tag_corpus_' + str(essay_set) + '.pkl'
+
+    # Get tokens if I'm going to need them later
+    if not caching \
+        or not os.path.isfile(stem_corpus_file) \
+        or not os.path.isfile(tag_corpus_file):
+      training_tokens = [getTokens(essay) for essay in training_essays]
+
+    # Build stem corpus or load from cache
+    if caching and os.path.isfile(stem_corpus_file):
+      print 'Loading cached corpuses...'
+      f = open(stem_corpus_file, 'rb')
+      stem_corpus = pickle.load(f)
+      f.close()
     else:
-      # Create corpus with all_essays
-      print 'Tokenizing essays...'
-      tokenized_essays = [getTokens(essay) for essay in all_essays]
-      print 'Building corpus...'
-      w, my_corpus = getCorpus(tokenized_essays)
-      print 'Building tag corpus...'
-      t, tag_corpus = getTagCorpus(tokenized_essays)
-      writeFile(my_corpus, [], stem_corpus_fn)
-      writeFile(tag_corpus, [], tag_corpus_fn)
+      stem_corpus = getCorpus(training_tokens)
+      if caching:
+        print 'Caching corpuses...'
+        f = open(stem_corpus_file, 'wb')
+        pickle.dump(stem_corpus, f)
+        f.close()
 
-    train_features_fn = "data/cache/train_features_%(essay)2i" % {'essay': i}
-    lb_features_fn = "data/cache/lb_features_%(essay)2i" % {'essay': i}
-    if len(sys.argv) > 1 and sys.argv[1] == 'cached' and \
-      os.path.isfile(train_features_fn) and \
-      os.path.isfile(lb_features_fn):
-        print 'Loading saved features...'
-        thead, tfh, tfeatures = readFile(train_features_fn, ',', numeric=True)
-        lhead, lfh, lfeatures = readFile(lb_features_fn, ',', numeric=True)
+    # Feature cache filenames
+    training_features_file = 'data/cache/training_features_' + str(essay_set) + '.pkl'
+    leaderboard_features_file = 'data/cache/leaderboard_features_' + str(essay_set) + '.pkl'
+
+    # Generate training features or load from cache
+    if caching and os.path.isfile(training_features_file):
+      print 'Loading cached features...'
+      f = open(training_features_file, 'rb')
+      training_features = pickle.load(f)
+      f.close()
     else:
-      print 'Generating features for train and leadboard sets...'
-      thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, ['EssaySet', 'Score1'])
-      lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, lh, w, t, ['EssaySet', 'Score1'])
-      writeFile(thead, tfeatures, train_features_fn)
-      writeFile(lhead, lfeatures, lb_features_fn)
+      training_features, training_features_header = \
+          getFeatures(training_rows, training_header, stem_corpus, extras=['Id', 'Score1'])
+      if caching:
+        print 'Caching features...'
+        f = open(training_features_file, 'wb')
+        pickle.dump(training_features, f)
+        f.close()
 
-    lx = [row[lfh['Length']:] for row in lfeatures]
+    if caching and os.path.isfile(leaderboard_features_file):
+      print 'Loading cached features...'
+      f = open(leaderboard_features_file, 'rb')
+      leaderboard_features = pickle.load(f)
+      f.close()
+    else:
+      leaderboard_features, leaderboard_features_header = \
+          getFeatures(leaderboard_rows, leaderboard_header, stem_corpus, extras=['Id'])
+      if caching:
+        print 'Caching features...'
+        f = open(leaderboard_features_file, 'wb')
+        pickle.dump(leaderboard_features, f)
+        f.close()
 
-    print 'Training and cross validating models...'
-    scores = dict()
-    folds = kFold(tfeatures, k)
-    for mname, model in models.items():
-      cv_scores = []
-      qwks = []
-      pwidgets =  [mname, ' Fold ', Counter(), ' ', ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
-      foldbar = ProgressBar(widgets=pwidgets, maxval=k)
-      foldbar.start()
-      for i, j in enumerate(range(k)):
-        foldbar.update(i)
-          # Get train and lb rows for this essay set
-        a = [row for rows in folds[:j] for row in rows]
-        b = [row for rows in folds[j+1:] for row in rows]
-        tffeatures = a + b
-        cffeatures = folds[j]
+    # Get predictions from all models to be used as super features
+    super_training_features, super_training_features_header, super_leaderboard_features, super_leaderboard_features_header = \
+        getPredictions(training_features, training_features_header, leaderboard_features, leaderboard_features_header)
 
-        tx = [row[tfh['Length']:] for row in tffeatures]
-        ty = [row[tfh['Score1']] for row in tffeatures]
+    model = getBestModel(super_training_features, super_training_features_header)
 
-        cx = [row[tfh['Length']:] for row in cffeatures]
-        cy = [row[tfh['Score1']] for row in cffeatures]
+    lb_id = leaderboard_features[:, 0]
+    preds = model.predict(super_leaderboard_features)
 
-        model.fit(tx, ty)
-        score = model.score(cx, cy)
-        p = model.predict(cx)
-        p = [int(pe) for pe in p]
-        qwk = quadratic_weighted_kappa(cy, p, 0, 3)
-        qwks.append(qwk)
-        cv_scores.append(score)
-      foldbar.finish()
+    sub_row = zip(lb_id, preds)
+    print sub_row
 
-      cv_mean = sum(cv_scores) / len(cv_scores)
-      print '  - Mean score for %(model)s: %(score)f' % {'model': mname, 'score': cv_mean}
-      scores[mname] = cv_mean
-      qwk_mean = sum(qwks) / len(qwks)
-      print '  - Mean QWK for %(model)s: %(score)f' % {'model': mname, 'score': qwk_mean}
-
-    print 'Building super training set...'
-
-    cv, train = cvSplit(tfeatures, .3)
-    trainx = [row[tfh['Length']:] for row in train]
-    trainy = [row[tfh['Score1']] for row in train]
-    cvx = [row[tfh['Length']:] for row in cv]
-    cvy = [row[tfh['Score1']] for row in cv]
-
-    cv_predictions = dict()
-    lb_predictions = dict()
-    supertrainhead = ['Id', 'Score1'] + models.keys()
-    superlbhead = ['Id'] + models.keys()
-    sth = dict(zip(supertrainhead, range(len(supertrainhead))))
-    slh = dict(zip(superlbhead, range(len(superlbhead))))
-    for mname, model in models.items():
-      print '  == Model: ' + mname
-      print '  -- training...'
-      model.fit(trainx, trainy)
-      print '  -- predicting cv...'
-      cv_predictions[mname] = model.predict(cvx)
-      print '  -- predicting lb...'
-      lb_predictions[mname] = model.predict(lx)
-
-    supertrain = []
-    for (i, row) in enumerate(cv):
-      supertrainrow = [None for _ in range(len(supertrainhead))]
-      supertrainrow[sth['Id']] = row[th['Id']]
-      supertrainrow[sth['Score1']] = row[th['Score1']]
-      for mname in models.keys():
-        supertrainrow[sth[mname]] = int(cv_predictions[mname][i])
-      supertrain.append(supertrainrow)
-
-    superlb = []
-    for (i, row) in enumerate(lfeatures):
-      superlbrow = [None for _ in range(len(superlbhead))]
-      superlbrow[slh['Id']] = row[lh['Id']]
-      for mname in models.keys():
-        superlbrow[slh[mname]] = int(lb_predictions[mname][i])
-      superlb.append(superlbrow)
-
-    print 'Cross validating super model...'
-    folds = kFold(supertrain, k)
-    modelscores = dict()
-    for mname, model in models.items():
-      superduperscores = []
-      superduperqwks = []
-      pwidgets =  [mname, ' Fold ', Counter(), ' ', ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
-      foldbar = ProgressBar(widgets=pwidgets, maxval=k)
-      foldbar.start()
-      for i, j in enumerate(range(k)):
-        foldbar.update(i)
-        a = [row for rows in folds[:j] for row in rows]
-        b = [row for rows in folds[j+1:] for row in rows]
-        superdupertrain = a + b
-        superdupercv = folds[j]
-        trainx = [row[2:] for row in superdupertrain]
-        trainy = [row[1] for row in superdupertrain]
-        cvx = [row[2:] for row in superdupercv]
-        cvy = [row[1] for row in superdupercv]
-        model.fit(trainx, trainy)
-        score = model.score(cvx, cvy)
-        superduperscores.append(score)
-        preds = model.predict(cvx)
-        preds = [int(p) for p in preds]
-        qwk = quadratic_weighted_kappa(cvy, preds, 0, 3)
-        superduperqwks.append(qwk)
-      foldbar.finish()
-      mean_superduper_score = sum(superduperscores) / len(superduperscores)
-      print 'Mean super duper CV score: ' + str(mean_superduper_score)
-      mean_superduper_qwk = sum(superduperqwks) / len(superduperqwks)
-      print 'Mean super duper CV QWK: ' + str(mean_superduper_qwk)
-      modelscores[mname] = mean_superduper_qwk
-
-    bestmodel = sorted(modelscores.iteritems(), key=operator.itemgetter(1), reverse=True)[0][0]
-
-    final_model = models[bestmodel]
-    final_trainx = [row[2:] for row in supertrain]
-    final_trainy = [row[1] for row in supertrain]
-    final_lbx = [row[1:] for row in superlb]
-    final_lb_ids = [row[0] for row in superlb]
-    final_model.fit(final_trainx, final_trainy)
-    predictions = final_model.predict(final_lbx)
-    sub_rows = zip(final_lb_ids, predictions)
-    all_sub_rows += sub_rows
-  sub_header = ['id', 'essay_score']
-  writeFile(sub_header, all_sub_rows, 'submission.csv')
+    all_submission_rows += sub_row
+    print len(all_submission_rows)
+  writeFile(all_submission_rows, ['id', 'essay_score'], filename='submission.csv', delimiter=',')
