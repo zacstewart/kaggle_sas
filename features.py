@@ -29,7 +29,7 @@ def getTags(tokens):
   tags = [tag[1] for tag in tags if not punct(tag[1])]
   return tags
 
-def getCorpus(tokenized_essays, n=2, c=1000):
+def getCorpus(tokenized_essays, n=5, c=1000):
   ''' Generate a corpus of n-grams used in example rows
   sorted by most popular and truncated at an arbitrary limit, n.
 

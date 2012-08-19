@@ -37,7 +37,7 @@ def writeFile(rows=None, header=[], filename=None, delimiter="\t"):
   f = open(filename, 'wb')
   f.write(delimiter.join(header) + "\n")
   for row in rows:
-    row = [str(col) for col in row]
+    row = [str(int(col)) for col in row]
     f.write(delimiter.join(row) + "\n")
   f.close()
 

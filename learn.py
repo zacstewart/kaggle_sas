@@ -39,9 +39,9 @@ MODELS = [
     'params': dict(C=100.0, cache_size=200, coef0=0.0, degree=3,
       gamma=0.001, tol=0.001),
     'name': 'SVC'},
-  {'constructor': svm.LinearSVC,
-    'params': dict(tol=0.0001, C=1.0, intercept_scaling=1, verbose=0),
-    'name': 'Linear SVC'},
+  #{'constructor': svm.LinearSVC,
+    #'params': dict(tol=0.0001, intercept_scaling=1, verbose=0),
+    #'name': 'Linear SVC'},
   {'constructor': RandomForestClassifier,
     'params': dict(n_estimators=150, min_samples_split=2, n_jobs=-1),
     'name': 'Random Forest Classifier'}]
@@ -114,9 +114,9 @@ def getBestModel(training_rows, header, k=10):
       pv = model['params'].values()
       pt = map(lambda v: type(v), model['params'].values())
 
-      if len(model['params']) > 0:
-        pv = minimize(lambda pv: scoreModel(constructor, pk, pv, pt, construct_X, construct_y, cv_X, cv_y), pv).x
-      pv = [pt[i](v) for (i, v) in enumerate(pv)]
+      #if len(model['params']) > 0:
+        #pv = minimize(lambda pv: scoreModel(constructor, pk, pv, pt, construct_X, construct_y, cv_X, cv_y), pv, method='L-BFGS-B').x
+      #pv = [pt[i](v) for (i, v) in enumerate(pv)]
 
       params = dict(zip(pk, pv))
       instance = constructor(**params)
@@ -135,8 +135,8 @@ def scoreModel(model, pk, pv, pt, construct_X, construct_y, cv_X, cv_y):
   instance = model(**params)
   try:
     instance.fit(construct_X, construct_y)
-  except ZeroDivisionError:
-    return .999
+  except:
+    return 1
   preds = instance.predict(cv_X).astype(int)
   qwk = quadratic_weighted_kappa(cv_y, preds, 0, 3)
   return 1. - qwk
