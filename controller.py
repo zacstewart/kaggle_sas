@@ -81,8 +81,8 @@ if __name__ == "__main__":
       lhead, lfh, lfeatures = readFile('data/lb_features.csv', ',', numeric=True)
     else:
       print 'Generating features for train and leadboard sets...'
-      thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, ['EssaySet', 'Score1'])
-      lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, lh, w, t, ['EssaySet', 'Score1'])
+      thead, tfh, tfeatures, _ = getFeatures(strows, my_corpus, tag_corpus, th, w, t, extras=['EssaySet', 'Score1'])
+      lhead, lfh, lfeatures, _ = getFeatures(slrows, my_corpus, tag_corpus, lh, w, t, extras=['EssaySet', 'Score1'])
       writeFile(thead, tfeatures, 'data/train_features.csv')
       writeFile(lhead, lfeatures, 'data/lb_features.csv')
 

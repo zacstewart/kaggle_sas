@@ -3,6 +3,7 @@ from progressbar import *
 import string
 import sys
 import operator
+import itertools
 
 stripper =  string.punctuation + string.whitespace
 stemmer  =  PorterStemmer()
@@ -26,7 +27,7 @@ def getTags(tokens):
   tags = [tag[1] for tag in tags if not punct(tag[1])]
   return tags
 
-def getCorpus(tokenized_essays, n=1000):
+def getCorpus(tokenized_essays, n=10, c=1000):
   ''' Generate a corpus of words used in example rows
   sorted by most popular and truncated at an arbitrary limit, n.
 
@@ -38,19 +39,24 @@ def getCorpus(tokenized_essays, n=1000):
   pwidgets =  ['Essay ', Counter(), '/', str(m), ' ', Percentage(), ' ', Bar(marker='=',left='[',right=']'), ' ', ETA()]
   pbar = ProgressBar(widgets=pwidgets, maxval=m)
   pbar.start()
-  words = dict()
+  ngrams = [dict() for _ in range(n)]
   for (i, essay) in enumerate(tokenized_essays):
     pbar.update(i)
-    tokens = set(getStems(essay)) # Uniq tokens
-    for token in tokens:
-      if not token in words: words[token] = 0
-      words[token] += 1
+    tokens = getStems(essay) # Uniq tokens
+    for g in range(n):
+      for t in range(len(tokens)):
+        gram = ' '.join(tokens[t:t+g+1])
+        if not gram in ngrams[g]: ngrams[g][gram] = 0
+        ngrams[g][gram] += 1
+
+  for g in range(n):
+    ngrams[g] = sorted(ngrams[g].iteritems(), key=operator.itemgetter(1), reverse=True)
+    ngrams[g] = ngrams[g][:c]
+    ngrams[g] = [ngram[0] for ngram in ngrams[g]]
   pbar.finish()
-  words = sorted(words.iteritems(), key=operator.itemgetter(1), reverse=True)
-  words = words[:n] # I wish I could keep them all, but I can't! :(
-  words = [word[0] for word in words]
-  w = dict(zip(words, range(len(words))))
-  return (w, words)
+  ngrams = list(itertools.chain(*ngrams))
+  w = dict(zip(ngrams, range(len(ngrams))))
+  return (w, ngrams)
 
 def getTagCorpus(tokenized_essays, n=1000):
   '''Same as get corpus, but return parts of speech'''
@@ -72,7 +78,7 @@ def getTagCorpus(tokenized_essays, n=1000):
   t = dict(zip(tags, range(len(tags))))
   return (t, tags)
 
-def getFeatures(rows, words, tags, h, w, t, extras=[]):
+def getFeatures(rows, words, tags, h, w, t, n=10, extras=[]):
   '''Create output header and feature rows.
 
   Keyword arguments:
@@ -131,10 +137,11 @@ def getFeatures(rows, words, tags, h, w, t, extras=[]):
     for char in list(row[h['EssayText']]):
       if char in set(string.punctuation): features[oh['PunctCt']] += 1
 
-    # Add words
-    for stem in my_stems:
-      if stem in oh:
-        features[oh[stem]] += 1
+    # Add ngrams
+    for g in range(n):
+      for t in range(len(my_stems)):
+        gram = ' '.join(my_stems[t:t+g+1])
+        if gram in words: features[oh[gram]] +=1
 
     # Add parts of speech
     for tag in my_tags:
